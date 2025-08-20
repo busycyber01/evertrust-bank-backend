@@ -1,0 +1,37 @@
+services:
+  - type: web
+    name: evertrust-bank-api
+    env: python
+    plan: free
+    buildCommand: |
+      pip install -r requirements.txt
+      python -m flask db upgrade
+      python scripts/setup.py
+    startCommand: gunicorn wsgi:app --bind 0.0.0.0:$PORT --workers 4 --timeout 120
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: evertrust-db
+          property: connectionString
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: FLASK_ENV
+        value: production
+      - key: ALLOWED_ORIGINS
+        value: https://your-frontend-domain.vercel.app,https://your-frontend-domain.netlify.app
+      - key: BCRYPT_LOG_ROUNDS
+        value: 12
+
+databases:
+  - name: evertrust-db
+    plan: free
+    databaseName: evertrust
+    user: evertrust_user
+    ipAllowList: []  # Allow all IPs (simplified for demo)
+
+# Optional: Cron jobs for maintenance
+cronJobs:
+  - name: daily-backup
+    schedule: "0 2 * * *"  # 2 AM daily
+    command: python scripts/backup_database.py
+    service: evertrust-bank-api
